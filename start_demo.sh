@@ -14,13 +14,23 @@ BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
-# Check if Python is available
+# Check if Python is available and version is 3.9+
 if ! command -v python3 &> /dev/null; then
-    echo -e "${RED}❌ Python 3 is not installed. Please install Python 3.8+ and try again.${NC}"
+    echo -e "${RED}❌ Python 3 is not installed. Please install Python 3.9+ and try again.${NC}"
     exit 1
 fi
 
-echo -e "${CYAN}✅ Python 3 found: $(python3 --version)${NC}"
+# Check Python version
+PYTHON_VERSION=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
+PYTHON_MAJOR=$(echo $PYTHON_VERSION | cut -d. -f1)
+PYTHON_MINOR=$(echo $PYTHON_VERSION | cut -d. -f2)
+
+if [ "$PYTHON_MAJOR" -lt 3 ] || ([ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -lt 9 ]); then
+    echo -e "${RED}❌ Python 3.9+ required. Found Python $PYTHON_VERSION. Please upgrade and try again.${NC}"
+    exit 1
+fi
+
+echo -e "${CYAN}✅ Python $PYTHON_VERSION found (compatible)${NC}"
 
 # Check if pip is available
 if ! command -v pip3 &> /dev/null; then
@@ -91,3 +101,4 @@ else
     echo -e "${YELLOW}💡 You can try running setup manually with: python3 setup_snowflake_demo.py --interactive${NC}"
     exit 1
 fi
+

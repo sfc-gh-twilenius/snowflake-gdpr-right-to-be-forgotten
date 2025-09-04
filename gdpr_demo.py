@@ -595,3 +595,4 @@ if __name__ == '__main__':
     print(f"{Fore.CYAN}Demonstrating GDPR Article 17 compliance using Snowflake Data Cloud{Style.RESET_ALL}")
     print("=" * 70)
     cli()
+

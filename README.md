@@ -133,7 +133,8 @@ CALL SP_COORDINATE_THIRD_PARTY_DELETION('customer@example.com');
 ### Prerequisites
 - **Snowflake Account** (Trial account works perfectly)
 - **ACCOUNTADMIN or SYSADMIN** privileges for setup
-- **SnowSQL CLI** or **Snowflake Web Interface**
+- **Python 3.9+** with pip
+- **SnowSQL CLI** or **Snowflake Web Interface** (optional)
 
 ### 1. Setup Snowflake Environment
 ```sql
@@ -505,3 +506,4 @@ Ready to implement GDPR compliance in Snowflake?
 5. Customize for your organization
 
 **This demo proves that comprehensive GDPR compliance can be achieved using Snowflake's native capabilities, without requiring complex external infrastructure or third-party tools.**
+

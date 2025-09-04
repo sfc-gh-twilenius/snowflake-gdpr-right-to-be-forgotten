@@ -3,8 +3,8 @@
 -- Setup Script - Creates all databases, schemas, tables, and procedures
 -- ==========================================
 
--- Use SYSADMIN role for setup
-USE ROLE SYSADMIN;
+-- Use ACCOUNTADMIN role for setup (required for database creation)
+USE ROLE ACCOUNTADMIN;
 
 -- ==========================================
 -- 1. CREATE DATABASES AND SCHEMAS
@@ -460,14 +460,14 @@ CREATE OR REPLACE TABLE GDPR_CONFIG (
 );
 
 -- Insert default configuration
-INSERT INTO GDPR_CONFIG VALUES
-('MAX_RESPONSE_TIME_DAYS', 30, 'Maximum response time for GDPR requests in days'),
-('AUTO_APPROVE_SIMPLE_REQUESTS', TRUE, 'Automatically approve simple erasure requests'),
-('REQUIRE_IDENTITY_VERIFICATION', TRUE, 'Require identity verification for erasure requests'),
-('DEFAULT_RETENTION_YEARS', 7, 'Default data retention period in years'),
-('ENABLE_PSEUDONYMIZATION', TRUE, 'Enable pseudonymization for analytics data'),
-('NOTIFICATION_EMAIL', 'gdpr-officer@company.com', 'Email for GDPR notifications'),
-('THIRD_PARTY_COORDINATION_ENABLED', TRUE, 'Enable automatic third-party coordination');
+INSERT INTO GDPR_CONFIG (config_key, config_value, description) VALUES
+('MAX_RESPONSE_TIME_DAYS', 30::VARIANT, 'Maximum response time for GDPR requests in days'),
+('AUTO_APPROVE_SIMPLE_REQUESTS', TRUE::VARIANT, 'Automatically approve simple erasure requests'),
+('REQUIRE_IDENTITY_VERIFICATION', TRUE::VARIANT, 'Require identity verification for erasure requests'),
+('DEFAULT_RETENTION_YEARS', 7::VARIANT, 'Default data retention period in years'),
+('ENABLE_PSEUDONYMIZATION', TRUE::VARIANT, 'Enable pseudonymization for analytics data'),
+('NOTIFICATION_EMAIL', 'gdpr-officer@company.com'::VARIANT, 'Email for GDPR notifications'),
+('THIRD_PARTY_COORDINATION_ENABLED', TRUE::VARIANT, 'Enable automatic third-party coordination');
 
 -- Data classification metadata
 USE SCHEMA REFERENCE_DB.METADATA;
@@ -562,3 +562,4 @@ GRANT ALL ON ALL TABLES IN DATABASE CUSTOMER_DATA_DB TO ROLE SYSADMIN;
 GRANT ALL ON ALL TABLES IN DATABASE ANALYTICS_DB TO ROLE SYSADMIN;
 GRANT ALL ON ALL TABLES IN DATABASE COMPLIANCE_DB TO ROLE SYSADMIN;
 GRANT ALL ON ALL TABLES IN DATABASE REFERENCE_DB TO ROLE SYSADMIN;
+

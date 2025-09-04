@@ -55,13 +55,13 @@ class SnowflakeSetup:
             with open(file_path, 'r') as file:
                 sql_content = file.read()
             
-            # Split SQL content by statement separator (semicolon)
-            statements = [stmt.strip() for stmt in sql_content.split(';') if stmt.strip()]
+            # Smart SQL statement parsing that handles stored procedures
+            statements = self._parse_sql_statements(sql_content)
             
             cursor = self.connection.cursor()
             
             for i, statement in enumerate(statements, 1):
-                if statement.upper().startswith(('--', '/*')) or not statement:
+                if not statement or statement.upper().startswith(('--', '/*')):
                     continue
                     
                 try:
@@ -81,6 +81,42 @@ class SnowflakeSetup:
         except Exception as e:
             print(f"{Fore.RED}❌ Failed to execute {description}: {e}{Style.RESET_ALL}")
             return False
+    
+    def _parse_sql_statements(self, sql_content: str) -> list:
+        """Parse SQL content into individual statements, handling stored procedures properly"""
+        statements = []
+        current_statement = ""
+        in_procedure = False
+        lines = sql_content.split('\n')
+        
+        for line in lines:
+            line = line.strip()
+            
+            # Skip empty lines and comments at the start of a line
+            if not line or line.startswith('--'):
+                continue
+            
+            current_statement += line + '\n'
+            
+            # Check for procedure start/end markers
+            if '$$' in line:
+                if not in_procedure:
+                    in_procedure = True
+                else:
+                    # End of procedure
+                    in_procedure = False
+                    statements.append(current_statement.strip())
+                    current_statement = ""
+            elif not in_procedure and line.endswith(';'):
+                # Regular statement ending with semicolon (not inside a procedure)
+                statements.append(current_statement.strip())
+                current_statement = ""
+        
+        # Add any remaining statement
+        if current_statement.strip():
+            statements.append(current_statement.strip())
+        
+        return [stmt for stmt in statements if stmt]
     
     def setup_databases_and_schemas(self) -> bool:
         """Setup databases, schemas, and tables"""
@@ -266,3 +302,4 @@ SNOWFLAKE_ROLE={role}
 
 if __name__ == '__main__':
     main()
+

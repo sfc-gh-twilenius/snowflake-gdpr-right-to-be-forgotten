@@ -3,14 +3,15 @@
 -- Creates realistic customer data for testing GDPR workflows
 -- ==========================================
 
-USE ROLE SYSADMIN;
+USE ROLE ACCOUNTADMIN;
 USE WAREHOUSE GDPR_PROCESSING_WH;
 
 -- ==========================================
 -- 1. CREATE DEMO CUSTOMERS
 -- ==========================================
 
-USE SCHEMA CUSTOMER_DATA_DB.CORE;
+USE DATABASE CUSTOMER_DATA_DB;
+USE SCHEMA CORE;
 
 -- Insert demo customers with various consent and retention scenarios
 INSERT INTO CUSTOMERS (
@@ -75,33 +76,35 @@ INSERT INTO CUSTOMERS (
 -- 2. CREATE USER PREFERENCES
 -- ==========================================
 
-USE SCHEMA CUSTOMER_DATA_DB.PREFERENCES;
+USE DATABASE CUSTOMER_DATA_DB;
+USE SCHEMA PREFERENCES;
 
 INSERT INTO USER_PREFERENCES (preference_id, customer_id, preference_key, preference_value) VALUES
 -- Preferences for CUST_001 (Anna Mueller)
-('PREF_001_01', 'CUST_001', 'language', '"de"'),
-('PREF_001_02', 'CUST_001', 'timezone', '"Europe/Berlin"'),
-('PREF_001_03', 'CUST_001', 'email_frequency', '"weekly"'),
-('PREF_001_04', 'CUST_001', 'data_sharing_level', '"minimal"'),
+('PREF_001_01', 'CUST_001', 'language', 'de'),
+('PREF_001_02', 'CUST_001', 'timezone', 'Europe/Berlin'),
+('PREF_001_03', 'CUST_001', 'email_frequency', 'weekly'),
+('PREF_001_04', 'CUST_001', 'data_sharing_level', 'minimal'),
 
 -- Preferences for CUST_002 (Jean Dupont)
-('PREF_002_01', 'CUST_002', 'language', '"fr"'),
-('PREF_002_02', 'CUST_002', 'timezone', '"Europe/Paris"'),
-('PREF_002_03', 'CUST_002', 'email_frequency', '"never"'),
+('PREF_002_01', 'CUST_002', 'language', 'fr'),
+('PREF_002_02', 'CUST_002', 'timezone', 'Europe/Paris'),
+('PREF_002_03', 'CUST_002', 'email_frequency', 'never'),
 
 -- Preferences for other customers
-('PREF_003_01', 'CUST_003', 'language', '"es"'),
-('PREF_003_02', 'CUST_003', 'newsletter_subscription', 'false'),
-('PREF_004_01', 'CUST_004', 'language', '"it"'),
-('PREF_004_02', 'CUST_004', 'data_export_format', '"json"'),
-('PREF_006_01', 'CUST_006', 'language', '"en"'),
+('PREF_003_01', 'CUST_003', 'language', 'es'),
+('PREF_003_02', 'CUST_003', 'newsletter_subscription', FALSE),
+('PREF_004_01', 'CUST_004', 'language', 'it'),
+('PREF_004_02', 'CUST_004', 'data_export_format', 'json'),
+('PREF_006_01', 'CUST_006', 'language', 'en'),
 ('PREF_006_02', 'CUST_006', 'marketing_preferences', '{"email": true, "sms": false, "phone": false}');
 
 -- ==========================================
 -- 3. CREATE TRANSACTION DATA
 -- ==========================================
 
-USE SCHEMA CUSTOMER_DATA_DB.TRANSACTIONS;
+USE DATABASE CUSTOMER_DATA_DB;
+USE SCHEMA TRANSACTIONS;
 
 INSERT INTO ORDERS (
     order_id, customer_id, customer_email, order_date, total_amount, currency,
@@ -110,40 +113,40 @@ INSERT INTO ORDERS (
 -- Orders for EU customers
 ('ORD_001_001', 'CUST_001', 'anna.mueller@email.de', '2024-01-20 14:30:00', 299.99, 'EUR',
  'CREDIT_CARD', 
- PARSE_JSON('{"street": "123 Hauptstrasse", "city": "Berlin", "postal_code": "10115", "country": "DE"}'),
- PARSE_JSON('{"street": "123 Hauptstrasse", "city": "Berlin", "postal_code": "10115", "country": "DE"}'),
+ '{"street": "123 Hauptstrasse", "city": "Berlin", "postal_code": "10115", "country": "DE"}',
+ '{"street": "123 Hauptstrasse", "city": "Berlin", "postal_code": "10115", "country": "DE"}',
  'DELIVERED', '2031-01-20', TRUE),
 
 ('ORD_001_002', 'CUST_001', 'anna.mueller@email.de', '2024-03-15 10:15:00', 149.50, 'EUR',
  'PAYPAL',
- PARSE_JSON('{"street": "123 Hauptstrasse", "city": "Berlin", "postal_code": "10115", "country": "DE"}'),
- PARSE_JSON('{"street": "123 Hauptstrasse", "city": "Berlin", "postal_code": "10115", "country": "DE"}'),
+ '{"street": "123 Hauptstrasse", "city": "Berlin", "postal_code": "10115", "country": "DE"}',
+ '{"street": "123 Hauptstrasse", "city": "Berlin", "postal_code": "10115", "country": "DE"}',
  'PROCESSING', '2031-03-15', TRUE),
 
 ('ORD_002_001', 'CUST_002', 'jean.dupont@email.fr', '2024-02-25 16:45:00', 89.99, 'EUR',
  'BANK_TRANSFER',
- PARSE_JSON('{"street": "456 Rue de la Paix", "city": "Paris", "postal_code": "75001", "country": "FR"}'),
- PARSE_JSON('{"street": "456 Rue de la Paix", "city": "Paris", "postal_code": "75001", "country": "FR"}'),
+ '{"street": "456 Rue de la Paix", "city": "Paris", "postal_code": "75001", "country": "FR"}',
+ '{"street": "456 Rue de la Paix", "city": "Paris", "postal_code": "75001", "country": "FR"}',
  'DELIVERED', '2031-02-25', FALSE), -- Cannot be deleted due to legal hold
 
 ('ORD_003_001', 'CUST_003', 'maria.garcia@email.es', '2024-03-01 12:20:00', 199.99, 'EUR',
  'CREDIT_CARD',
- PARSE_JSON('{"street": "789 Calle Mayor", "city": "Madrid", "postal_code": "28001", "country": "ES"}'),
- PARSE_JSON('{"street": "789 Calle Mayor", "city": "Madrid", "postal_code": "28001", "country": "ES"}'),
+ '{"street": "789 Calle Mayor", "city": "Madrid", "postal_code": "28001", "country": "ES"}',
+ '{"street": "789 Calle Mayor", "city": "Madrid", "postal_code": "28001", "country": "ES"}',
  'DELIVERED', '2031-03-01', TRUE),
 
 -- Orders for non-EU customers
 ('ORD_006_001', 'CUST_006', 'john.smith@email.com', '2024-02-10 09:30:00', 399.99, 'USD',
  'CREDIT_CARD',
- PARSE_JSON('{"street": "123 Main Street", "city": "New York", "state": "NY", "postal_code": "10001", "country": "US"}'),
- PARSE_JSON('{"street": "123 Main Street", "city": "New York", "state": "NY", "postal_code": "10001", "country": "US"}'),
+ '{"street": "123 Main Street", "city": "New York", "state": "NY", "postal_code": "10001", "country": "US"}',
+ '{"street": "123 Main Street", "city": "New York", "state": "NY", "postal_code": "10001", "country": "US"}',
  'DELIVERED', '2031-02-10', TRUE),
 
 -- High-value order with extended retention
 ('ORD_012_001', 'CUST_012', 'business.contact@company.com', '2024-01-15 11:00:00', 9999.99, 'GBP',
  'WIRE_TRANSFER',
- PARSE_JSON('{"street": "444 Business Park", "city": "London", "postal_code": "SW1A 1AA", "country": "GB"}'),
- PARSE_JSON('{"street": "444 Business Park", "city": "London", "postal_code": "SW1A 1AA", "country": "GB"}'),
+ '{"street": "444 Business Park", "city": "London", "postal_code": "SW1A 1AA", "country": "GB"}',
+ '{"street": "444 Business Park", "city": "London", "postal_code": "SW1A 1AA", "country": "GB"}',
  'DELIVERED', '2034-01-15', FALSE); -- B2B contract retention
 
 -- Order items
@@ -160,7 +163,8 @@ INSERT INTO ORDER_ITEMS (order_item_id, order_id, product_id, product_name, quan
 -- 4. CREATE SUPPORT TICKET DATA
 -- ==========================================
 
-USE SCHEMA CUSTOMER_DATA_DB.SUPPORT;
+USE DATABASE CUSTOMER_DATA_DB;
+USE SCHEMA SUPPORT;
 
 INSERT INTO SUPPORT_TICKETS (
     ticket_id, customer_id, customer_email, subject, description, priority, status, assigned_agent, resolved_at
@@ -189,7 +193,8 @@ INSERT INTO SUPPORT_TICKETS (
 -- 5. CREATE ANALYTICS DATA
 -- ==========================================
 
-USE SCHEMA ANALYTICS_DB.EVENTS;
+USE DATABASE ANALYTICS_DB;
+USE SCHEMA EVENTS;
 
 -- Generate user activity events for the past 3 months
 INSERT INTO USER_ACTIVITIES (
@@ -199,41 +204,42 @@ INSERT INTO USER_ACTIVITIES (
 ) VALUES
 -- Events for CUST_001 (Anna Mueller)
 ('EVT_001_001', 'CUST_001', 'anna.mueller@email.de', 'SESS_001_001', 'page_view', '2024-01-15 09:30:00',
- '/products/laptops', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)', '192.168.1.101', 'desktop', 'Chrome', 'DE',
- PARSE_JSON('{"page_category": "products", "time_on_page": 45}'), TRUE),
+ '/products/laptops', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36', '192.168.1.101', 'desktop', 'Chrome', 'DE',
+ '{"page_category": "products", "time_on_page": 45}', TRUE),
 
 ('EVT_001_002', 'CUST_001', 'anna.mueller@email.de', 'SESS_001_001', 'add_to_cart', '2024-01-15 09:32:00',
- '/products/laptops/business-pro', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)', '192.168.1.101', 'desktop', 'Chrome', 'DE',
- PARSE_JSON('{"product_id": "PROD_LAPTOP_001", "price": 299.99}'), TRUE),
+ '/products/laptops/business-pro', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36', '192.168.1.101', 'desktop', 'Chrome', 'DE',
+ '{"product_id": "PROD_LAPTOP_001", "price": 299.99}', TRUE),
 
 ('EVT_001_003', 'CUST_001', 'anna.mueller@email.de', 'SESS_001_002', 'purchase', '2024-01-20 14:30:00',
- '/checkout/complete', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)', '192.168.1.101', 'desktop', 'Chrome', 'DE',
- PARSE_JSON('{"order_id": "ORD_001_001", "total": 299.99, "payment_method": "CREDIT_CARD"}'), TRUE),
+ '/checkout/complete', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36', '192.168.1.101', 'desktop', 'Chrome', 'DE',
+ '{"order_id": "ORD_001_001", "total": 299.99, "payment_method": "CREDIT_CARD"}', TRUE),
 
 -- Events for CUST_002 (Jean Dupont) - analytics consent withdrawn
 ('EVT_002_001', 'CUST_002', 'jean.dupont@email.fr', 'SESS_002_001', 'page_view', '2024-02-20 14:15:00',
- '/products/headphones', 'Mozilla/5.0 (Macintosh; Intel Mac OS X)', '10.0.1.101', 'desktop', 'Safari', 'FR',
- PARSE_JSON('{"page_category": "products", "time_on_page": 30}'), FALSE),
+ '/products/headphones', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36', '10.0.1.101', 'desktop', 'Safari', 'FR',
+ '{"page_category": "products", "time_on_page": 30}'), FALSE),
 
 -- Events for CUST_003 (Maria Garcia) - marketing consent withdrawn, but analytics OK
 ('EVT_003_001', 'CUST_003', 'maria.garcia@email.es', 'SESS_003_001', 'page_view', '2024-02-28 16:45:00',
- '/products/tablets', 'Mozilla/5.0 (iPhone; CPU iPhone OS)', '172.16.1.101', 'mobile', 'Safari', 'ES',
- PARSE_JSON('{"page_category": "products", "time_on_page": 60}'), TRUE),
+ '/products/tablets', 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)', '172.16.1.101', 'mobile', 'Safari', 'ES',
+ '{"page_category": "products", "time_on_page": 60}'), TRUE),
 
 ('EVT_003_002', 'CUST_003', 'maria.garcia@email.es', 'SESS_003_001', 'purchase', '2024-03-01 12:20:00',
- '/checkout/complete', 'Mozilla/5.0 (iPhone; CPU iPhone OS)', '172.16.1.101', 'mobile', 'Safari', 'ES',
- PARSE_JSON('{"order_id": "ORD_003_001", "total": 199.99}'), TRUE),
+ '/checkout/complete', 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)', '172.16.1.101', 'mobile', 'Safari', 'ES',
+ '{"order_id": "ORD_003_001", "total": 199.99}'), TRUE),
 
 -- Events for customers who will have data deleted (for testing pseudonymization)
 ('EVT_009_001', 'CUST_009', 'consent.withdrawn@email.de', 'SESS_009_001', 'page_view', '2023-11-15 10:30:00',
- '/account/settings', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)', '192.168.2.101', 'desktop', 'Firefox', 'DE',
- PARSE_JSON('{"page_category": "account", "action": "consent_withdrawal"}'), FALSE);
+ '/account/settings', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36', '192.168.2.101', 'desktop', 'Firefox', 'DE',
+ '{"page_category": "account", "action": "consent_withdrawal"}', FALSE);
 
 -- ==========================================
 -- 6. CREATE MARKETING CAMPAIGN DATA
 -- ==========================================
 
-USE SCHEMA ANALYTICS_DB.CAMPAIGNS;
+USE DATABASE ANALYTICS_DB;
+USE SCHEMA CAMPAIGNS;
 
 INSERT INTO MARKETING_INTERACTIONS (
     interaction_id, customer_id, customer_email, campaign_id, campaign_name,
@@ -266,28 +272,30 @@ INSERT INTO MARKETING_INTERACTIONS (
 -- 7. CREATE ML MODEL DATA
 -- ==========================================
 
-USE SCHEMA ANALYTICS_DB.ML_MODELS;
+USE DATABASE ANALYTICS_DB;
+USE SCHEMA ML_MODELS;
 
 INSERT INTO CUSTOMER_ML_FEATURES (
     feature_id, customer_id, feature_set_name, features, model_version, computed_at
 ) VALUES
 ('ML_001_001', 'CUST_001', 'customer_ltv_model', 
- PARSE_JSON('{"ltv_score": 0.85, "purchase_frequency": 0.3, "avg_order_value": 299.99, "churn_probability": 0.1}'),
+ '{"ltv_score": 0.85, "purchase_frequency": 0.3, "avg_order_value": 299.99, "churn_probability": 0.1}'),
  'v2.1', '2024-03-01 02:00:00'),
 
 ('ML_003_001', 'CUST_003', 'recommendation_features',
- PARSE_JSON('{"category_preference": "electronics", "price_sensitivity": 0.6, "brand_loyalty": 0.4}'),
+ '{"category_preference": "electronics", "price_sensitivity": 0.6, "brand_loyalty": 0.4}'),
  'v1.5', '2024-03-02 02:00:00'),
 
 ('ML_006_001', 'CUST_006', 'customer_ltv_model',
- PARSE_JSON('{"ltv_score": 0.92, "purchase_frequency": 0.2, "avg_order_value": 399.99, "churn_probability": 0.05}'),
+ '{"ltv_score": 0.92, "purchase_frequency": 0.2, "avg_order_value": 399.99, "churn_probability": 0.05}'),
  'v2.1', '2024-03-01 02:00:00');
 
 -- ==========================================
 -- 8. CREATE COMPLIANCE DATA
 -- ==========================================
 
-USE SCHEMA COMPLIANCE_DB.REQUESTS;
+USE DATABASE COMPLIANCE_DB;
+USE SCHEMA REQUESTS;
 
 -- Sample erasure requests in different states
 INSERT INTO ERASURE_REQUESTS (
@@ -314,7 +322,8 @@ INSERT INTO ERASURE_REQUESTS (
 -- 9. CREATE LEGAL RETENTION POLICIES
 -- ==========================================
 
-USE SCHEMA COMPLIANCE_DB.LEGAL;
+USE DATABASE COMPLIANCE_DB;
+USE SCHEMA LEGAL;
 
 INSERT INTO RETENTION_POLICIES (
     policy_id, customer_id, data_category, retention_reason, retention_period_months,
@@ -336,7 +345,8 @@ INSERT INTO RETENTION_POLICIES (
 -- 10. CREATE AUDIT LOG ENTRIES
 -- ==========================================
 
-USE SCHEMA COMPLIANCE_DB.AUDIT;
+USE DATABASE COMPLIANCE_DB;
+USE SCHEMA AUDIT;
 
 INSERT INTO GDPR_AUDIT_LOG (
     audit_id, event_type, event_timestamp, customer_email, user_name, role_name,
@@ -344,34 +354,35 @@ INSERT INTO GDPR_AUDIT_LOG (
 ) VALUES
 ('AUDIT_001', 'ERASURE_REQUEST_SUBMITTED', '2023-12-01 10:00:00', 'consent.withdrawn@email.de', 'SYSTEM', 'GDPR_PROCESSOR',
  'Customer submitted erasure request due to withdrawn consent',
- PARSE_JSON('{"request_type": "FULL_ERASURE", "reason": "WITHDRAWN_CONSENT", "source": "WEB_FORM"}'),
+ '{"request_type": "FULL_ERASURE", "reason": "WITHDRAWN_CONSENT", "source": "WEB_FORM"}',
  'REQ_2024_001', 'CONSENT', 'WITHDRAWN'),
 
 ('AUDIT_002', 'DATA_DELETION_COMPLETED', '2023-12-05 15:30:00', 'consent.withdrawn@email.de', 'GDPR_PROCESSOR', 'SYSTEM',
  'Personal data deletion completed across all systems',
- PARSE_JSON('{"systems_affected": ["CUSTOMER_DATA_DB", "ANALYTICS_DB"], "records_deleted": 15}'),
+ '{"systems_affected": ["CUSTOMER_DATA_DB", "ANALYTICS_DB"], "records_deleted": 15}'),
  'REQ_2024_001', 'CONSENT', 'WITHDRAWN'),
 
 ('AUDIT_003', 'CONSENT_WITHDRAWAL', '2024-02-20 14:15:00', 'jean.dupont@email.fr', 'jean.dupont@email.fr', 'CUSTOMER',
  'Customer withdrew analytics consent',
- PARSE_JSON('{"consent_type": "analytics", "withdrawal_method": "account_settings"}'),
+ '{"consent_type": "analytics", "withdrawal_method": "account_settings"}',
  NULL, 'LEGITIMATE_INTEREST', 'WITHDRAWN'),
 
 ('AUDIT_004', 'ERASURE_REQUEST_SUBMITTED', '2024-03-01 14:00:00', 'jean.dupont@email.fr', 'SUPPORT_AGENT', 'CUSTOMER_SERVICE',
  'Erasure request submitted via support ticket',
- PARSE_JSON('{"request_type": "FULL_ERASURE", "reason": "OBJECTION", "source": "SUPPORT_TICKET"}'),
+ '{"request_type": "FULL_ERASURE", "reason": "OBJECTION", "source": "SUPPORT_TICKET"}',
  'REQ_2024_002', 'LEGITIMATE_INTEREST', 'OBJECTION'),
 
 ('AUDIT_005', 'DATA_ACCESS_REQUEST', '2024-03-10 11:20:00', 'maria.garcia@email.es', 'maria.garcia@email.es', 'CUSTOMER',
  'Customer requested data export',
- PARSE_JSON('{"export_format": "JSON", "data_categories": ["personal_data", "transaction_history"]}'),
+ '{"export_format": "JSON", "data_categories": ["personal_data", "transaction_history"]}'),
  NULL, 'CONSENT', 'GRANTED');
 
 -- ==========================================
 -- 11. CREATE THIRD-PARTY NOTIFICATION RECORDS
 -- ==========================================
 
-USE SCHEMA COMPLIANCE_DB.NOTIFICATIONS;
+USE DATABASE COMPLIANCE_DB;
+USE SCHEMA NOTIFICATIONS;
 
 INSERT INTO THIRD_PARTY_NOTIFICATIONS (
     notification_id, request_id, customer_email, third_party_name, third_party_type,
@@ -395,7 +406,8 @@ INSERT INTO THIRD_PARTY_NOTIFICATIONS (
 -- 12. UPDATE DATA CLASSIFICATION METADATA
 -- ==========================================
 
-USE SCHEMA REFERENCE_DB.METADATA;
+USE DATABASE REFERENCE_DB;
+USE SCHEMA METADATA;
 
 INSERT INTO DATA_CLASSIFICATION (
     classification_id, database_name, schema_name, table_name, column_name,
@@ -453,3 +465,4 @@ FROM COMPLIANCE_DB.REQUESTS.ERASURE_REQUESTS;
 
 SELECT 'GDPR Compliance Dashboard:' AS info;
 SELECT * FROM COMPLIANCE_DB.REQUESTS.VW_GDPR_COMPLIANCE_DASHBOARD;
+

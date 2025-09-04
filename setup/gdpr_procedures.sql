@@ -3,7 +3,7 @@
 -- Core GDPR compliance procedures for data discovery, erasure, and verification
 -- ==========================================
 
-USE ROLE SYSADMIN;
+USE ROLE ACCOUNTADMIN;
 USE WAREHOUSE GDPR_PROCESSING_WH;
 USE DATABASE COMPLIANCE_DB;
 USE SCHEMA REQUESTS;
@@ -67,44 +67,54 @@ BEGIN
         data_type_val := record.data_type;
         
         -- Classify PII type
-        pii_class := CASE 
-            WHEN UPPER(col_name) LIKE '%EMAIL%' THEN 'EMAIL_ADDRESS'
-            WHEN UPPER(col_name) LIKE '%PHONE%' THEN 'PHONE_NUMBER'
-            WHEN UPPER(col_name) LIKE '%ADDRESS%' THEN 'POSTAL_ADDRESS'
-            WHEN UPPER(col_name) LIKE '%NAME%' AND UPPER(col_name) NOT LIKE '%USER%' THEN 'PERSONAL_NAME'
-            WHEN UPPER(col_name) LIKE '%SSN%' OR UPPER(col_name) LIKE '%SOCIAL%' THEN 'SSN'
-            WHEN UPPER(col_name) LIKE '%BIRTH%' THEN 'DATE_OF_BIRTH'
-            ELSE 'POTENTIAL_PII'
-        END;
+        IF (UPPER(col_name) LIKE '%EMAIL%') THEN
+            pii_class := 'EMAIL_ADDRESS';
+        ELSEIF (UPPER(col_name) LIKE '%PHONE%') THEN
+            pii_class := 'PHONE_NUMBER';
+        ELSEIF (UPPER(col_name) LIKE '%ADDRESS%') THEN
+            pii_class := 'POSTAL_ADDRESS';
+        ELSEIF (UPPER(col_name) LIKE '%NAME%' AND UPPER(col_name) NOT LIKE '%USER%') THEN
+            pii_class := 'PERSONAL_NAME';
+        ELSEIF (UPPER(col_name) LIKE '%SSN%' OR UPPER(col_name) LIKE '%SOCIAL%') THEN
+            pii_class := 'SSN';
+        ELSEIF (UPPER(col_name) LIKE '%BIRTH%') THEN
+            pii_class := 'DATE_OF_BIRTH';
+        ELSE
+            pii_class := 'POTENTIAL_PII';
+        END IF;
         
         -- Determine sensitivity level
-        sensitivity := CASE 
-            WHEN pii_class IN ('SSN', 'DATE_OF_BIRTH') THEN 'CRITICAL'
-            WHEN pii_class IN ('EMAIL_ADDRESS', 'PHONE_NUMBER', 'POSTAL_ADDRESS') THEN 'HIGH'
-            WHEN pii_class = 'PERSONAL_NAME' THEN 'MEDIUM'
-            ELSE 'LOW'
-        END;
+        IF (pii_class IN ('SSN', 'DATE_OF_BIRTH')) THEN
+            sensitivity := 'CRITICAL';
+        ELSEIF (pii_class IN ('EMAIL_ADDRESS', 'PHONE_NUMBER', 'POSTAL_ADDRESS')) THEN
+            sensitivity := 'HIGH';
+        ELSEIF (pii_class = 'PERSONAL_NAME') THEN
+            sensitivity := 'MEDIUM';
+        ELSE
+            sensitivity := 'LOW';
+        END IF;
         
         -- Build dynamic SQL to count records for this customer
         full_table_name := db_name || '.' || schema_name || '.' || table_name;
         
         -- Special handling for email columns
-        IF UPPER(col_name) LIKE '%EMAIL%' THEN
-            check_sql := 'SELECT COUNT(*) FROM ' || full_table_name || 
-                        ' WHERE ' || col_name || ' = ''' || CUSTOMER_EMAIL || '''';
-        ELSE
-            -- For other columns, check if table has customer_email or customer_id
-            check_sql := 'SELECT COUNT(*) FROM ' || full_table_name || 
-                        ' WHERE (customer_email = ''' || CUSTOMER_EMAIL || ''' OR ' ||
-                        'email = ''' || CUSTOMER_EMAIL || ''' OR ' ||
-                        'user_email = ''' || CUSTOMER_EMAIL || ''')';
+        check_sql := 'SELECT COUNT(*) FROM IDENTIFIER(''' || full_table_name || ''') ' ||
+                    ' WHERE (TRY_CAST(customer_email AS STRING) = ''' || CUSTOMER_EMAIL || ''' OR ' ||
+                    'TRY_CAST(email AS STRING) = ''' || CUSTOMER_EMAIL || ''' OR ' ||
+                    'TRY_CAST(user_email AS STRING) = ''' || CUSTOMER_EMAIL || ''')';
+                    
+        -- For email columns, also check the specific column
+        IF (pii_class = 'EMAIL_ADDRESS') THEN
+            check_sql := 'SELECT COUNT(*) FROM IDENTIFIER(''' || full_table_name || ''') ' ||
+                        ' WHERE TRY_CAST(' || col_name || ' AS STRING) = ''' || CUSTOMER_EMAIL || '''';
         END IF;
         
         -- Execute the count query
         BEGIN
-            EXECUTE IMMEDIATE check_sql;
-            FOR count_record IN res_cursor DO
-                record_count := count_record."COUNT(*)";
+            LET count_result RESULTSET := (EXECUTE IMMEDIATE check_sql);
+            LET count_cursor CURSOR FOR count_result;
+            FOR count_row IN count_cursor DO
+                record_count := count_row."COUNT(*)";
             END FOR;
         EXCEPTION
             WHEN OTHER THEN
@@ -112,7 +122,7 @@ BEGIN
         END;
         
         -- Insert results if records found
-        IF record_count > 0 THEN
+        IF (record_count > 0) THEN
             INSERT INTO temp_discovery_results VALUES (
                 db_name, schema_name, table_name, col_name, 
                 pii_class, record_count, sensitivity
@@ -120,25 +130,19 @@ BEGIN
         END IF;
     END FOR;
     
-    -- Store discovery results in permanent table
-    INSERT INTO COMPLIANCE_DB.REQUESTS.DATA_DISCOVERY_RESULTS (
-        discovery_id, request_id, customer_email, database_name, schema_name,
-        table_name, column_name, pii_classification, records_found,
-        sensitive_data_detected, can_be_deleted
-    )
-    SELECT 
-        CONCAT('DISC_', UUID_STRING(), '_', REPLACE(CUSTOMER_EMAIL, '@', '_AT_')),
-        'DISCOVERY_' || UUID_STRING(),
-        CUSTOMER_EMAIL,
-        database_name,
-        schema_name,
-        table_name,
-        column_name,
-        pii_classification,
-        records_found,
-        sensitivity_level IN ('HIGH', 'CRITICAL'),
-        TRUE -- Default to can be deleted, will be updated by legal review
-    FROM temp_discovery_results;
+    -- Store discovery results in permanent table (using dynamic SQL to avoid syntax issues)
+    LET insert_results_sql STRING := 
+        'INSERT INTO COMPLIANCE_DB.REQUESTS.DATA_DISCOVERY_RESULTS (' ||
+        'discovery_id, request_id, customer_email, database_name, schema_name,' ||
+        'table_name, column_name, pii_classification, records_found,' ||
+        'sensitive_data_detected, can_be_deleted) ' ||
+        'SELECT CONCAT(''DISC_'', UUID_STRING(), ''_'', REPLACE(''' || CUSTOMER_EMAIL || ''', ''@'', ''_AT_'')), ' ||
+        '''DISCOVERY_'' || UUID_STRING(), ''' || CUSTOMER_EMAIL || ''', ' ||
+        'database_name, schema_name, table_name, column_name, pii_classification, ' ||
+        'records_found, sensitivity_level IN (''HIGH'', ''CRITICAL''), TRUE ' ||
+        'FROM temp_discovery_results';
+    
+    EXECUTE IMMEDIATE insert_results_sql;
     
     -- Return results
     RETURN TABLE(
@@ -176,7 +180,7 @@ BEGIN
         'OBJECTION', 'LEGAL_COMPLIANCE', 'CHILD_CONSENT'
     );
     
-    IF NOT ARRAY_CONTAINS(ERASURE_REASON::VARIANT, valid_reasons) THEN
+    IF (NOT ARRAY_CONTAINS(ERASURE_REASON::VARIANT, valid_reasons)) THEN
         RETURN 'ERROR: Invalid GDPR grounds for erasure. Must be one of: ' || 
                ARRAY_TO_STRING(valid_reasons, ', ');
     END IF;
@@ -193,11 +197,13 @@ BEGIN
     estimated_completion := DATEADD('day', 30, CURRENT_DATE());
     
     -- Check for existing active requests
-    IF EXISTS (
-        SELECT 1 FROM ERASURE_REQUESTS 
-        WHERE customer_email = CUSTOMER_EMAIL 
-        AND status IN ('SUBMITTED', 'VALIDATED', 'IN_PROGRESS')
-    ) THEN
+    LET existing_request_count INTEGER;
+    SELECT COUNT(*) INTO existing_request_count
+    FROM ERASURE_REQUESTS 
+    WHERE customer_email = CUSTOMER_EMAIL 
+    AND status IN ('SUBMITTED', 'VALIDATED', 'IN_PROGRESS');
+    
+    IF (existing_request_count > 0) THEN
         RETURN 'ERROR: An active erasure request already exists for this email';
     END IF;
     
@@ -258,11 +264,11 @@ BEGIN
     FROM ERASURE_REQUESTS 
     WHERE request_id = REQUEST_ID;
     
-    IF customer_email_val IS NULL THEN
+    IF (customer_email_val IS NULL) THEN
         RETURN 'ERROR: Erasure request not found';
     END IF;
     
-    IF current_status NOT IN ('SUBMITTED', 'VALIDATED') THEN
+    IF (current_status NOT IN ('SUBMITTED', 'VALIDATED')) THEN
         RETURN 'ERROR: Request is not in a processable state. Current status: ' || current_status;
     END IF;
     
@@ -274,7 +280,7 @@ BEGIN
     AND rp.retention_end_date > CURRENT_DATE()
     AND rp.can_override_gdpr = FALSE;
     
-    IF retention_check > 0 THEN
+    IF (retention_check > 0) THEN
         UPDATE ERASURE_REQUESTS 
         SET status = 'REJECTED',
             legal_basis_override = 'Customer data under legal retention - cannot delete'
@@ -301,20 +307,20 @@ BEGIN
         operation_id := 'OP_' || UUID_STRING();
         
         -- Determine operation type based on table and data sensitivity
-        IF db_name = 'ANALYTICS_DB' AND schema_name IN ('EVENTS', 'ML_MODELS') THEN
+        IF (db_name = 'ANALYTICS_DB' AND schema_name IN ('EVENTS', 'ML_MODELS')) THEN
             -- Pseudonymize analytics data instead of deleting
-            operation_sql := 'UPDATE ' || full_table_name || 
-                           ' SET user_email = ''PSEUDONYM_'' || SHA2(user_email || CURRENT_TIMESTAMP()), ' ||
+            operation_sql := 'UPDATE IDENTIFIER(''' || full_table_name || ''') ' ||
+                           ' SET user_email = ''PSEUDONYM_'' || SHA2(COALESCE(user_email, '''') || CURRENT_TIMESTAMP()), ' ||
                            '     is_pseudonymized = TRUE, ' ||
                            '     pseudonym_id = UUID_STRING() ' ||
-                           ' WHERE user_email = ''' || customer_email_val || ''' OR ' ||
-                           '       customer_email = ''' || customer_email_val || '''';
+                           ' WHERE TRY_CAST(user_email AS STRING) = ''' || customer_email_val || ''' OR ' ||
+                           '       TRY_CAST(customer_email AS STRING) = ''' || customer_email_val || '''';
         ELSE
             -- Full deletion for other tables
-            operation_sql := 'DELETE FROM ' || full_table_name || 
-                           ' WHERE customer_email = ''' || customer_email_val || ''' OR ' ||
-                           '       email = ''' || customer_email_val || ''' OR ' ||
-                           '       user_email = ''' || customer_email_val || '''';
+            operation_sql := 'DELETE FROM IDENTIFIER(''' || full_table_name || ''') ' ||
+                           ' WHERE TRY_CAST(customer_email AS STRING) = ''' || customer_email_val || ''' OR ' ||
+                           '       TRY_CAST(email AS STRING) = ''' || customer_email_val || ''' OR ' ||
+                           '       TRY_CAST(user_email AS STRING) = ''' || customer_email_val || '''';
         END IF;
         
         -- Execute the operation
@@ -519,7 +525,7 @@ BEGIN
     ORDER BY requested_at DESC
     LIMIT 1;
     
-    IF request_id_val IS NULL THEN
+    IF (request_id_val IS NULL) THEN
         RETURN 'ERROR: No active erasure request found for customer';
     END IF;
     
@@ -564,7 +570,7 @@ $$;
 
 -- Check GDPR compliance status for a customer
 CREATE OR REPLACE FUNCTION FN_CHECK_GDPR_COMPLIANCE_STATUS(CUSTOMER_EMAIL STRING)
-RETURNS VARIANT
+RETURNS OBJECT
 LANGUAGE SQL
 AS
 $$
@@ -628,3 +634,4 @@ SELECT 'GDPR procedures and functions created successfully!' AS message,
 -- Show created procedures
 SHOW PROCEDURES LIKE 'SP_%';
 SHOW FUNCTIONS LIKE 'FN_%';
+

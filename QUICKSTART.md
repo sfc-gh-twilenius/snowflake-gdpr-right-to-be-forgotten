@@ -6,7 +6,7 @@ Get the Snowflake GDPR compliance demo running in under 10 minutes!
 
 - **Snowflake Account** (Free trial account works perfectly)
 - **SYSADMIN or ACCOUNTADMIN** privileges in Snowflake
-- **Python 3.8+** with pip
+- **Python 3.9+** with pip
 - **Git** (to clone the repository)
 
 ## 🎯 One-Command Setup
@@ -313,3 +313,4 @@ After completing this demo, you'll understand:
 **🚀 Ready to explore GDPR compliance with Snowflake?**
 
 Run `python setup_snowflake_demo.py --interactive` to get started!
+
